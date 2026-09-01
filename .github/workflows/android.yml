@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -22,13 +22,45 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       # The OAuth client ID is not in the repo. Provide it as a repository secret named
-      # GOOGLE_WEB_CLIENT_ID to get working Google Sign-In in CI builds; without it the app
+      # GOOGLE_WEB_CLIENT_ID for working Google Sign-In in CI builds; without it the app
       # still builds and runs, and the Google button reports that sign-in is unconfigured.
       - name: Write local.properties
         run: echo "GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}" > local.properties
 
       - name: Assemble debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        id: assemble
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace --console=plain 2>&1 | tee build.log
+
+      # Actions logs need admin rights to download even on a public repo, but the job summary
+      # renders on the public run page. On failure, surface the compiler errors there so the
+      # build is diagnosable without repo access.
+      - name: Report failure to job summary
+        if: failure()
+        run: |
+          {
+            echo '## Build failed'
+            echo
+            echo '### Errors'
+            echo '```'
+            grep -E "^(e:|w: .*error|FAILURE|Caused by|> Task .* FAILED|\* What went wrong)" build.log \
+              | head -120 || echo "(no matching error lines)"
+            echo '```'
+            echo
+            echo '### Last 200 lines'
+            echo '```'
+            tail -n 200 build.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: warn
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
