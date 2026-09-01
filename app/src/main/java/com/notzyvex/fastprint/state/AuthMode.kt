@@ -13,7 +13,7 @@ data class UserProfile(
     /** Two-letter fallback shown when there is no profile photo to load. */
     val initials: String
         get() {
-            val parts = name?.trim()?.split(Regex("\s+")).orEmpty().filter { it.isNotBlank() }
+            val parts = name?.trim()?.split(Regex("\\s+")).orEmpty().filter { it.isNotBlank() }
             return when {
                 parts.size >= 2 -> "${parts[0].first()}${parts[1].first()}".uppercase()
                 parts.size == 1 -> parts[0].take(2).uppercase()
