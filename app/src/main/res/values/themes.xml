@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Organic is a light-only design system, so the app theme is pinned to a light
+      splash/window background rather than following the system dark setting.
+    -->
+    <style name="Theme.FastPrint" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/organic_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

@@ -1,0 +1,8 @@
+# Copy to local.properties (gitignored) and fill in.
+#
+# sdk.dir is written automatically by Android Studio; set it by hand only for CLI builds.
+# sdk.dir=C\:\Users\<you>\AppData\Local\Android\Sdk
+
+# The Google Cloud OAuth **Web application** client ID (not the Android one).
+# Credential Manager takes the web client ID as its serverClientId. See SETUP.md.
+GOOGLE_WEB_CLIENT_ID=
