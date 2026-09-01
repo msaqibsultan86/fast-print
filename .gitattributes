@@ -1,0 +1,14 @@
+# Normalise text, but the Gradle wrapper script must stay LF or Linux/CI cannot run it.
+* text=auto eol=lf
+gradlew text eol=lf
+*.bat text eol=crlf
+
+# Binary assets
+*.jar binary
+*.ttf binary
+*.webp binary
+*.png binary
+*.jpg binary
+*.avif binary
+*.keystore binary
+*.jks binary
