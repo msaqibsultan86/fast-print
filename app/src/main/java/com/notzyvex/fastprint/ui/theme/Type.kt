@@ -1,6 +1,7 @@
 package com.notzyvex.fastprint.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -15,7 +16,10 @@ val Caprasimo = FontFamily(Font(R.font.caprasimo, FontWeight.Normal))
 /**
  * Body — Figtree, shipped as a variable font. minSdk 26 so the weight axis is honoured
  * natively rather than synthesised.
+ *
+ * FontVariation is still @ExperimentalTextApi in Compose 1.7, hence the opt-in.
  */
+@OptIn(ExperimentalTextApi::class)
 val Figtree = FontFamily(
     Font(
         R.font.figtree,
