@@ -95,7 +95,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: fast-print-debug-apk
+          name: FastPrint
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 

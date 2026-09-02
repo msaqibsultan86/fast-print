@@ -43,12 +43,23 @@ jobs:
 
       # The keystore is stored as a base64 secret. It MUST be the same key that signed
       # every previous release, or Android refuses the update as signature-incompatible.
+      # Names only, never values — makes a missing or misnamed secret obvious immediately.
+      - name: Check secrets are present
+        run: |
+          check() { if [ -n "$2" ]; then echo "  OK      $1"; else echo "  MISSING $1"; fi; }
+          echo "Repository secrets visible to this run:"
+          check GOOGLE_WEB_CLIENT_ID "${{ secrets.GOOGLE_WEB_CLIENT_ID }}"
+          check KEYSTORE_BASE64      "${{ secrets.KEYSTORE_BASE64 }}"
+          check KEYSTORE_PASSWORD    "${{ secrets.KEYSTORE_PASSWORD }}"
+          check KEY_ALIAS            "${{ secrets.KEY_ALIAS }}"
+          check KEY_PASSWORD         "${{ secrets.KEY_PASSWORD }}"
+
       - name: Restore keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::KEYSTORE_BASE64 secret is not set. A release APK must be signed with the app's real key or in-app updates will be rejected."
+            echo "::error::KEYSTORE_BASE64 secret is not set. Add it at Settings > Secrets and variables > Actions > New repository secret (the Secrets tab, not Variables)."
             exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > release.keystore

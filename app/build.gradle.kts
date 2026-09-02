@@ -73,13 +73,13 @@ android {
         }
     }
 
-    // fastprint-1.0.0.apk / fastprint-1.0.0-debug.apk
+    // FastPrint-1.0.0.apk for release, FastPrint-1.0.0-debug.apk for debug.
     applicationVariants.all {
         val variant = this
         variant.outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val suffix = if (variant.buildType.name == "release") "" else "-${variant.buildType.name}"
-            output.outputFileName = "fastprint-${variant.versionName}$suffix.apk"
+            output.outputFileName = "FastPrint-${variant.versionName}$suffix.apk"
         }
     }
 

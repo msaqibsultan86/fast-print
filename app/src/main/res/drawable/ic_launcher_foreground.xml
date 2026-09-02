@@ -1,28 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The Lucide printer glyph, centred inside the adaptive-icon safe zone. -->
+<!--
+  Fast Print launcher mark: a printer with a sheet feeding out.
+
+  Drawn as FILLED shapes, not strokes. A 2dp stroke inside a 24-unit viewport scales down to
+  roughly a single pixel on a small launcher grid, which is why a stroked glyph reads as faint
+  or empty. Solid shapes hold up at every density.
+
+  Geometry is laid out directly in the 108x108 adaptive viewport, centred in the 72x72 safe zone.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group android:translateX="30" android:translateY="30" android:scaleX="2" android:scaleY="2">
-        <path
-            android:pathData="M6,9V3a1,1 0 0 1 1,-1h10a1,1 0 0 1 1,1v6"
-            android:strokeColor="#F5EAD8"
-            android:strokeWidth="2.2"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <path
-            android:pathData="M6,18H5a3,3 0 0 1 -3,-3v-3a3,3 0 0 1 3,-3h14a3,3 0 0 1 3,3v3a3,3 0 0 1 -3,3h-1"
-            android:strokeColor="#F5EAD8"
-            android:strokeWidth="2.2"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <path
-            android:pathData="M7,14h10a1,1 0 0 1 1,1v7H6v-7a1,1 0 0 1 1,-1z"
-            android:strokeColor="#F5EAD8"
-            android:strokeWidth="2.2"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-    </group>
+
+    <!-- top sheet stub coming out of the printer -->
+    <path
+        android:fillColor="#F5EAD8"
+        android:pathData="M38,26 h32 a3,3 0 0 1 3,3 v11 h-38 v-11 a3,3 0 0 1 3,-3 z" />
+
+    <!-- printer body -->
+    <path
+        android:fillColor="#F5EAD8"
+        android:pathData="M30,44 h48 a7,7 0 0 1 7,7 v15 a7,7 0 0 1 -7,7 h-4 v-8 a4,4 0 0 0 -4,-4 h-32 a4,4 0 0 0 -4,4 v8 h-4 a7,7 0 0 1 -7,-7 v-15 a7,7 0 0 1 7,-7 z" />
+
+    <!-- ink indicator, punched out of the body in the accent colour -->
+    <path
+        android:fillColor="#C67139"
+        android:pathData="M71,52 m-4,0 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0" />
+
+    <!-- printed sheet emerging at the bottom -->
+    <path
+        android:fillColor="#F5EAD8"
+        android:pathData="M38,66 h32 a2,2 0 0 1 2,2 v18 a2,2 0 0 1 -2,2 h-32 a2,2 0 0 1 -2,-2 v-18 a2,2 0 0 1 2,-2 z" />
+
+    <!-- text lines on the printed sheet -->
+    <path
+        android:fillColor="#C67139"
+        android:pathData="M43,73 h22 v3 h-22 z M43,79 h22 v3 h-22 z" />
 </vector>
