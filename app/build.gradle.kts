@@ -32,7 +32,22 @@ android {
     // an update signed with a different key than the installed build, and CI's own throwaway
     // debug keystore changes every run. It is also the SHA-1 registered with Google Sign-In.
     val storeFilePath = localProps.getProperty("RELEASE_STORE_FILE")
-    val hasSigning = storeFilePath != null && rootProject.file(storeFilePath).exists()
+    val storePass = localProps.getProperty("RELEASE_STORE_PASSWORD")
+    val keyAliasProp = localProps.getProperty("RELEASE_KEY_ALIAS")
+    // Every field must be present. A half-filled config would fail the build at signing
+    // time with a confusing error, so fall back to the debug key and warn instead.
+    val hasSigning = !storeFilePath.isNullOrBlank() &&
+        !storePass.isNullOrBlank() &&
+        !keyAliasProp.isNullOrBlank() &&
+        rootProject.file(storeFilePath).exists()
+
+    if (!hasSigning) {
+        logger.warn(
+            "Fast Print: no signing config in local.properties — building with the debug key. " +
+                "Google Sign-In will fail (registered SHA-1 won't match) and in-app updates " +
+                "will be rejected as signature-incompatible."
+        )
+    }
 
     signingConfigs {
         if (hasSigning) {
