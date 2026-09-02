@@ -1,8 +1,19 @@
 # Copy to local.properties (gitignored) and fill in.
 #
 # sdk.dir is written automatically by Android Studio; set it by hand only for CLI builds.
-# sdk.dir=C\:\Users\<you>\AppData\Local\Android\Sdk
+# sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
 
+# --- Google Sign-In ---
 # The Google Cloud OAuth **Web application** client ID (not the Android one).
 # Credential Manager takes the web client ID as its serverClientId. See SETUP.md.
 GOOGLE_WEB_CLIENT_ID=
+
+# --- Signing ---
+# One key signs debug AND release. Required for two reasons:
+#   1. Google Sign-In matches package name + SHA-1, so the signing cert must be stable.
+#   2. In-app updates fail if the new APK is signed with a different key than the installed one.
+# Use forward slashes even on Windows. An absolute path is fine.
+RELEASE_STORE_FILE=C:/xampp_L/htdocs/astro-ai/astra-release.keystore
+RELEASE_STORE_PASSWORD=
+RELEASE_KEY_ALIAS=
+RELEASE_KEY_PASSWORD=

@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.notzyvex.fastprint.state.AppViewModel
 import com.notzyvex.fastprint.state.Screen
+import com.notzyvex.fastprint.ui.components.FastPrintToast
 import com.notzyvex.fastprint.ui.screens.CustomizeScreen
 import com.notzyvex.fastprint.ui.screens.DoneScreen
 import com.notzyvex.fastprint.ui.screens.FailedScreen
@@ -29,6 +30,7 @@ import com.notzyvex.fastprint.ui.screens.PrintersScreen
 import com.notzyvex.fastprint.ui.screens.PrintingScreen
 import com.notzyvex.fastprint.ui.screens.SettingsScreen
 import com.notzyvex.fastprint.ui.screens.SignInScreen
+import com.notzyvex.fastprint.ui.screens.UpdateScreen
 import com.notzyvex.fastprint.ui.screens.WelcomeScreen
 import com.notzyvex.fastprint.ui.theme.Organic
 
@@ -54,6 +56,16 @@ fun FastPrintApp(vm: AppViewModel) {
     val selectedPrinter by vm.selectedPrinter.collectAsStateWithLifecycle()
     val history by vm.history.collectAsStateWithLifecycle()
     val failureReason by vm.failureReason.collectAsStateWithLifecycle()
+    val availableUpdate by vm.availableUpdate.collectAsStateWithLifecycle()
+    val updateStage by vm.updateStage.collectAsStateWithLifecycle()
+    val downloadPercent by vm.downloadPercent.collectAsStateWithLifecycle()
+    val updateError by vm.updateError.collectAsStateWithLifecycle()
+    val toast by vm.toast.collectAsStateWithLifecycle()
+
+    // Coming back from the "allow installs" settings screen should resume the update.
+    val installSettings = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { vm.onReturnedFromInstallSettings() }
 
     val pickImage = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -100,6 +112,30 @@ fun FastPrintApp(vm: AppViewModel) {
     ) {
         when (screen) {
             Screen.LAUNCH -> LaunchScreen(onSkip = vm::skipLaunch)
+
+            Screen.UPDATE -> {
+                val pending = availableUpdate
+                if (pending == null) {
+                    // Nothing to show — fall through rather than render an empty screen.
+                    LaunchScreen(onSkip = vm::skipLaunch)
+                } else {
+                    UpdateScreen(
+                        stage = updateStage,
+                        update = pending,
+                        currentVersion = BuildConfig.VERSION_NAME,
+                        downloadPercent = downloadPercent,
+                        errorMessage = updateError,
+                        onUpdateNow = vm::startUpdate,
+                        onAllowInstalls = {
+                            installSettings.launch(vm.installPermissionIntent())
+                        },
+                        onNotNow = vm::backToAvailable,
+                        onCancelDownload = vm::cancelDownload,
+                        onRetry = vm::retryUpdate,
+                        onDismiss = vm::dismissUpdate,
+                    )
+                }
+            }
 
             Screen.SIGNIN -> SignInScreen(
                 errorMessage = signInError,
@@ -182,9 +218,11 @@ fun FastPrintApp(vm: AppViewModel) {
                 notifications = notifications,
                 accentTheme = accentTheme,
                 versionName = BuildConfig.VERSION_NAME,
+                updateReady = availableUpdate != null,
                 onBack = { vm.go(Screen.HOME) },
                 onToggleNotifications = vm::toggleNotifications,
                 onAccent = vm::setAccent,
+                onCheckUpdates = vm::checkForUpdates,
                 onLogout = vm::logout,
                 onSignIn = { vm.go(Screen.SIGNIN) },
             )
@@ -213,5 +251,7 @@ fun FastPrintApp(vm: AppViewModel) {
                 onDrag = vm::nudge,
             )
         }
+
+        FastPrintToast(toast)
     }
 }

@@ -166,4 +166,33 @@ object Lucide {
         "M8.53 16.11a6 6 0 0 1 6.95 0",
         "M12 20h.01",
     )
+
+    // ---- update flow ----
+
+    val Download = lucide("download", "M12 3v12", "m7 12 5 5 5-5", "M5 21h14")
+
+    val ShieldCheck = lucide(
+        "shield-check",
+        "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+        "m9 12 2 2 4-4",
+    )
+
+    val ExternalLink = lucide(
+        "external-link",
+        "M21 2 13 10",
+        "M16 2h5v5",
+        "M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7",
+    )
+
+    val RefreshCw = lucide(
+        "refresh-cw",
+        "M3 12a9 9 0 0 1 15-6.7L21 8",
+        "M21 3v5h-5",
+        "M21 12a9 9 0 0 1-15 6.7L3 16",
+        "M3 21v-5h5",
+    )
+
+    val AlertCircle = lucide("alert-circle", circle(12f, 12f, 10f), "M12 8v4M12 16h.01")
+
+    val ArrowRight = lucide("arrow-right", "M5 12h14M13 6l6 6-6 6")
 }

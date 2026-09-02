@@ -28,14 +28,43 @@ android {
         resValue("string", "google_web_client_id", googleWebClientId)
     }
 
+    // One signing identity for debug and release. In-app updates require it: Android rejects
+    // an update signed with a different key than the installed build, and CI's own throwaway
+    // debug keystore changes every run. It is also the SHA-1 registered with Google Sign-In.
+    val storeFilePath = localProps.getProperty("RELEASE_STORE_FILE")
+    val hasSigning = storeFilePath != null && rootProject.file(storeFilePath).exists()
+
+    signingConfigs {
+        if (hasSigning) {
+            create("fastprint") {
+                storeFile = rootProject.file(storeFilePath!!)
+                storePassword = localProps.getProperty("RELEASE_STORE_PASSWORD")
+                keyAlias = localProps.getProperty("RELEASE_KEY_ALIAS")
+                keyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+            if (hasSigning) signingConfig = signingConfigs.getByName("fastprint")
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasSigning) signingConfig = signingConfigs.getByName("fastprint")
+        }
+    }
+
+    // fastprint-1.0.0.apk / fastprint-1.0.0-debug.apk
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val suffix = if (variant.buildType.name == "release") "" else "-${variant.buildType.name}"
+            output.outputFileName = "fastprint-${variant.versionName}$suffix.apk"
         }
     }
 

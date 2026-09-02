@@ -19,7 +19,13 @@ import com.notzyvex.fastprint.print.PrintController
 import com.notzyvex.fastprint.print.PrintOutcome
 import com.notzyvex.fastprint.print.PrinterDiscovery
 import com.notzyvex.fastprint.ui.theme.AccentTheme
+import com.notzyvex.fastprint.update.AvailableUpdate
+import com.notzyvex.fastprint.update.InstallResultReceiver
+import com.notzyvex.fastprint.update.UpdateCheck
+import com.notzyvex.fastprint.update.UpdateChecker
+import com.notzyvex.fastprint.update.UpdateInstaller
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -35,6 +42,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = HistoryRepository(app)
     private val discovery = PrinterDiscovery(app)
     private val auth = GoogleAuth(app.getString(R.string.google_web_client_id))
+    private val updateChecker = UpdateChecker()
+    private val updateInstaller = UpdateInstaller(app)
 
     val googleConfigured: Boolean get() = auth.isConfigured
 
@@ -95,18 +104,45 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val _failureReason = MutableStateFlow<String?>(null)
     val failureReason = _failureReason.asStateFlow()
 
+    // ---- in-app update ----
+    private val _availableUpdate = MutableStateFlow<AvailableUpdate?>(null)
+    val availableUpdate = _availableUpdate.asStateFlow()
+    private val _updateStage = MutableStateFlow(UpdateStage.AVAILABLE)
+    val updateStage = _updateStage.asStateFlow()
+    private val _downloadPercent = MutableStateFlow(0)
+    val downloadPercent = _downloadPercent.asStateFlow()
+    private val _updateError = MutableStateFlow<String?>(null)
+    val updateError = _updateError.asStateFlow()
+    private val _toast = MutableStateFlow<String?>(null)
+    val toast = _toast.asStateFlow()
+
     private var printController: PrintController? = null
     private var launchJob: Job? = null
+    private var downloadJob: Job? = null
+    private var toastJob: Job? = null
 
     init {
         launchJob = viewModelScope.launch {
+            // Run the update check alongside the splash rather than after it, so a reachable
+            // network costs no extra wait and an unreachable one cannot stall startup.
+            val check = async { updateChecker.check() }
             delay(Timing.LAUNCH_MS)
-            if (_screen.value == Screen.LAUNCH) {
-                _screen.value =
-                    if (_authMode.value == AuthMode.GOOGLE) Screen.HOME else Screen.SIGNIN
+            if (_screen.value != Screen.LAUNCH) return@launch
+
+            val result = withTimeoutOrNull(Timing.UPDATE_CHECK_BUDGET_MS) { check.await() }
+            if (result is UpdateCheck.Available) {
+                _availableUpdate.value = result.update
+                _updateStage.value = UpdateStage.AVAILABLE
+                _screen.value = Screen.UPDATE
+                return@launch
             }
+            _screen.value = afterUpdateScreen
         }
     }
+
+    /** Where the update screen hands off to — the normal post-splash destination. */
+    private val afterUpdateScreen: Screen
+        get() = if (_authMode.value == AuthMode.GOOGLE) Screen.HOME else Screen.SIGNIN
 
     // ================= navigation =================
     fun go(target: Screen) {
@@ -355,9 +391,116 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { repo.clear() }
     }
 
+    // ================= in-app update =================
+
+    fun showToast(message: String) {
+        _toast.value = message
+        toastJob?.cancel()
+        toastJob = viewModelScope.launch {
+            delay(Timing.TOAST_MS)
+            _toast.value = null
+        }
+    }
+
+    /** Settings → Check for updates. Reports either outcome, unlike the silent launch check. */
+    fun checkForUpdates() {
+        viewModelScope.launch {
+            when (val result = updateChecker.check()) {
+                is UpdateCheck.Available -> {
+                    _availableUpdate.value = result.update
+                    _updateStage.value = UpdateStage.AVAILABLE
+                    _updateError.value = null
+                    _screen.value = Screen.UPDATE
+                }
+
+                UpdateCheck.UpToDate ->
+                    showToast("You're up to date · v${com.notzyvex.fastprint.BuildConfig.VERSION_NAME}")
+
+                is UpdateCheck.Failed -> showToast(result.reason)
+            }
+        }
+    }
+
+    /** "Update now" — routes through the permission gate first if Android needs it. */
+    fun startUpdate() {
+        if (!updateInstaller.canInstall()) {
+            _updateStage.value = UpdateStage.PERMISSION
+            return
+        }
+        beginDownload()
+    }
+
+    /** Returning from the system settings screen: re-check and continue if it was granted. */
+    fun onReturnedFromInstallSettings() {
+        if (_screen.value == Screen.UPDATE && _updateStage.value == UpdateStage.PERMISSION) {
+            if (updateInstaller.canInstall()) beginDownload()
+        }
+    }
+
+    fun installPermissionIntent() = updateInstaller.unknownSourcesIntent()
+
+    private fun beginDownload() {
+        val update = _availableUpdate.value ?: return
+        _updateError.value = null
+        _downloadPercent.value = 0
+        _updateStage.value = UpdateStage.DOWNLOADING
+
+        downloadJob?.cancel()
+        downloadJob = viewModelScope.launch {
+            try {
+                val apk = updateInstaller.download(update) { fraction ->
+                    _downloadPercent.value = (fraction * 100).toInt()
+                }
+                _updateStage.value = UpdateStage.INSTALLING
+                InstallResultReceiver.lastFailure = null
+                updateInstaller.install(apk)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _updateError.value = e.message
+                    ?: "Couldn't download the update package (network error)."
+                _updateStage.value = UpdateStage.FAILED
+            }
+        }
+    }
+
+    fun cancelDownload() {
+        downloadJob?.cancel()
+        downloadJob = null
+        _downloadPercent.value = 0
+        _updateStage.value = UpdateStage.AVAILABLE
+    }
+
+    /** "Dialog didn't appear?" and "Try again" both land here. */
+    fun retryUpdate() {
+        val reported = InstallResultReceiver.lastFailure
+        if (reported != null) _updateError.value = reported
+        if (_updateStage.value == UpdateStage.INSTALLING) {
+            _updateStage.value = UpdateStage.FAILED
+            return
+        }
+        startUpdate()
+    }
+
+    fun backToAvailable() {
+        _updateStage.value = UpdateStage.AVAILABLE
+    }
+
+    /** "Later" / "Cancel" — non-forced, so it always continues into the app. */
+    fun dismissUpdate() {
+        downloadJob?.cancel()
+        downloadJob = null
+        updateInstaller.clearCachedApks()
+        _updateStage.value = UpdateStage.AVAILABLE
+        _downloadPercent.value = 0
+        _screen.value = afterUpdateScreen
+    }
+
     override fun onCleared() {
         printController?.dispose()
         printController = null
+        downloadJob?.cancel()
+        toastJob?.cancel()
         super.onCleared()
     }
 }

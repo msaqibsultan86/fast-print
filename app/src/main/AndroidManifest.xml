@@ -21,6 +21,9 @@
         android:name="android.permission.ACCESS_FINE_LOCATION"
         android:maxSdkVersion="32" />
 
+    <!-- Sideloaded distribution: the app downloads and installs its own updates. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <uses-feature android:name="android.hardware.wifi" android:required="false" />
 
     <application
@@ -44,5 +47,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Receives the PackageInstaller session result for in-app updates. -->
+        <receiver
+            android:name=".update.InstallResultReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.notzyvex.fastprint.INSTALL_RESULT" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

@@ -1,6 +1,7 @@
 package com.notzyvex.fastprint.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,9 +52,11 @@ fun SettingsScreen(
     notifications: Boolean,
     accentTheme: AccentTheme,
     versionName: String,
+    updateReady: Boolean,
     onBack: () -> Unit,
     onToggleNotifications: () -> Unit,
     onAccent: (AccentTheme) -> Unit,
+    onCheckUpdates: () -> Unit,
     onLogout: () -> Unit,
     onSignIn: () -> Unit,
 ) {
@@ -148,8 +151,36 @@ fun SettingsScreen(
                 PillSwitch(checked = notifications, onToggle = onToggleNotifications)
             }
             Divider()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onCheckUpdates)
+                    .padding(horizontal = 18.dp, vertical = 15.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Lucide.RefreshCw,
+                    null,
+                    Modifier.size(20.dp),
+                    tint = Organic.Accent700,
+                )
+                HSpace(13.dp)
+                Text("Check for updates", style = body(15), modifier = Modifier.weight(1f))
+                Text(
+                    if (updateReady) "Update ready" else "v$versionName",
+                    style = body(13, color = if (updateReady) accent.dark else Organic.muted()),
+                )
+                HSpace(6.dp)
+                Icon(
+                    Lucide.ChevronRight,
+                    null,
+                    Modifier.size(18.dp),
+                    tint = Organic.muted(0.4f),
+                )
+            }
+            Divider()
             SettingRow(icon = Lucide.Info, iconTint = Organic.Accent700, label = "Version") {
-                Text(versionName, style = body(13, color = Organic.muted()))
+                Text("v$versionName", style = body(13, color = Organic.muted()))
             }
         }
 
