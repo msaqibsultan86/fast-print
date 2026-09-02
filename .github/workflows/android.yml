@@ -21,11 +21,34 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # The OAuth client ID is not in the repo. Provide it as a repository secret named
-      # GOOGLE_WEB_CLIENT_ID for working Google Sign-In in CI builds; without it the app
-      # still builds and runs, and the Google button reports that sign-in is unconfigured.
+      # Restore the app's signing key. Without it the APK gets a throwaway debug key, whose
+      # SHA-1 is not the one registered with Google, so Sign-In fails and in-app updates are
+      # rejected as signature-incompatible. Optional here so forks/PRs still build.
+      - name: Restore keystore
+        id: keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "keystore restored ($(stat -c%s release.keystore) bytes)"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::KEYSTORE_BASE64 not set - building with a debug key. Google Sign-In and in-app updates will not work in this APK."
+          fi
+
       - name: Write local.properties
-        run: echo "GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}" > local.properties
+        run: |
+          {
+            echo "GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}"
+            if [ "${{ steps.keystore.outputs.signed }}" = "true" ]; then
+              echo "RELEASE_STORE_FILE=release.keystore"
+              echo "RELEASE_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}"
+              echo "RELEASE_KEY_ALIAS=${{ secrets.KEY_ALIAS }}"
+              echo "RELEASE_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}"
+            fi
+          } > local.properties
 
       - name: Assemble debug APK
         id: assemble
@@ -62,9 +85,20 @@ jobs:
           path: build.log
           if-no-files-found: warn
 
+      # Surfaces a key mismatch in the log instead of as a failed install on someone's phone.
+      - name: Show signing certificate
+        if: success() && steps.keystore.outputs.signed == 'true'
+        run: |
+          APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -1)
+          "$ANDROID_HOME"/build-tools/35.0.0/apksigner verify --print-certs "$APK" | grep -iE "SHA-1|Signer" || true
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: fast-print-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f release.keystore local.properties
