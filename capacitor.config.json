@@ -1,0 +1,8 @@
+{
+  "appId": "com.notzyvex.fastprint",
+  "appName": "Fast Print",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

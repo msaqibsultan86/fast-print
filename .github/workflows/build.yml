@@ -1,0 +1,53 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: npm install
+      - run: npx cap sync android
+      - name: Restore keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/fastprint.keystore
+            {
+              echo "storeFile=fastprint.keystore"
+              echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}"
+              echo "keyAlias=${{ secrets.KEY_ALIAS }}"
+              echo "keyPassword=${{ secrets.KEY_PASSWORD }}"
+            } > android/keystore.properties
+          fi
+      - name: Build
+        run: |
+          set -o pipefail
+          cd android && chmod +x gradlew && ./gradlew assembleDebug --console=plain 2>&1 | tee ../build.log
+      - name: Errors
+        if: failure()
+        run: |
+          {
+            echo '```'
+            grep -E "^(e:|FAILURE|Caused by|> Task .* FAILED|\* What went wrong)" build.log | head -80 || true
+            tail -n 120 build.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FastPrint
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
