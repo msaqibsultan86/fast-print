@@ -14,7 +14,19 @@ import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.getcapacitor.annotation.CapacitorPlugin
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
@@ -35,6 +47,61 @@ class FastPrintPlugin : Plugin() {
         get() = context.getSystemService(Context.NSD_SERVICE) as NsdManager
 
     private val serviceTypes = listOf("_ipps._tcp.", "_ipp._tcp.", "_pdl-datastream._tcp.")
+
+    @PluginMethod
+    fun googleSignIn(call: PluginCall) {
+        val clientId = call.getString("clientId")
+        if (clientId.isNullOrBlank()) return call.reject("clientId required")
+        val act = activity ?: return call.reject("no activity")
+
+        val option = GetGoogleIdOption.Builder()
+            .setFilterByAuthorizedAccounts(false)
+            .setServerClientId(clientId)
+            .setAutoSelectEnabled(false)
+            .build()
+        val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
+
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val response = CredentialManager.create(act).getCredential(act, request)
+                val cred = response.credential
+                if (cred !is CustomCredential ||
+                    cred.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+                ) {
+                    call.reject("Unexpected credential type")
+                    return@launch
+                }
+                val token = GoogleIdTokenCredential.createFrom(cred.data)
+                call.resolve(JSObject().apply {
+                    put("name", token.displayName ?: token.givenName ?: "")
+                    put("email", token.id)
+                    put("photo", token.profilePictureUri?.toString() ?: "")
+                    put("idToken", token.idToken)
+                })
+            } catch (e: GetCredentialCancellationException) {
+                call.reject("CANCELLED")
+            } catch (e: NoCredentialException) {
+                call.reject("NO_ACCOUNT")
+            } catch (e: GetCredentialException) {
+                call.reject(e.message ?: "Sign-in failed")
+            } catch (e: Exception) {
+                call.reject(e.message ?: "Sign-in failed")
+            }
+        }
+    }
+
+    @PluginMethod
+    fun googleSignOut(call: PluginCall) {
+        val act = activity
+        if (act == null) { call.resolve(); return }
+        CoroutineScope(Dispatchers.Main).launch {
+            runCatching {
+                CredentialManager.create(act)
+                    .clearCredentialState(ClearCredentialStateRequest())
+            }
+            call.resolve()
+        }
+    }
 
     @PluginMethod
     fun startScan(call: PluginCall) {
