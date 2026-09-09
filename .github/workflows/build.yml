@@ -20,6 +20,14 @@ jobs:
       - uses: android-actions/setup-android@v3
       - run: npm install
       - run: npx cap sync android
+      - name: Check secrets
+        run: |
+          c() { if [ -n "$2" ]; then echo "  OK      $1"; else echo "::warning::secret $1 is MISSING"; fi; }
+          c KEYSTORE_BASE64    "${{ secrets.KEYSTORE_BASE64 }}"
+          c KEYSTORE_PASSWORD  "${{ secrets.KEYSTORE_PASSWORD }}"
+          c KEY_ALIAS          "${{ secrets.KEY_ALIAS }}"
+          c KEY_PASSWORD       "${{ secrets.KEY_PASSWORD }}"
+
       - name: Restore keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}

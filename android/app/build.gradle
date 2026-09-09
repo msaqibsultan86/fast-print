@@ -16,28 +16,37 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    def ksProps = new Properties()
+    def ksFile = rootProject.file('keystore.properties')
+    def ksReady = false
+    if (ksFile.exists()) {
+        ksFile.withInputStream { ksProps.load(it) }
+        def sf = ksProps['storeFile']
+        ksReady = sf && ksProps['storePassword'] && ksProps['keyAlias'] && ksProps['keyPassword'] && rootProject.file(sf).exists()
+    }
+    if (!ksReady) {
+        logger.warn('FASTPRINT: signing config incomplete, using the debug key. Google Sign-In and in-app updates will not work in this APK.')
+    }
+
     signingConfigs {
         fastprint {
-            def props = new Properties()
-            def f = rootProject.file('keystore.properties')
-            if (f.exists()) {
-                f.withInputStream { props.load(it) }
-                storeFile rootProject.file(props['storeFile'])
-                storePassword props['storePassword']
-                keyAlias props['keyAlias']
-                keyPassword props['keyPassword']
+            if (ksReady) {
+                storeFile rootProject.file(ksProps['storeFile'])
+                storePassword ksProps['storePassword']
+                keyAlias ksProps['keyAlias']
+                keyPassword ksProps['keyPassword']
             }
         }
     }
 
     buildTypes {
         debug {
-            if (rootProject.file('keystore.properties').exists()) {
+            if (ksReady) {
                 signingConfig signingConfigs.fastprint
             }
         }
         release {
-            if (rootProject.file('keystore.properties').exists()) {
+            if (ksReady) {
                 signingConfig signingConfigs.fastprint
             }
             minifyEnabled false
