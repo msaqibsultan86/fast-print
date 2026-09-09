@@ -1,5 +1,4 @@
 node_modules/
-android/
 .DS_Store
 *.log
 android/keystore.properties
@@ -9,3 +8,7 @@ android/.gradle/
 android/local.properties
 *.jks
 *.keystore
+android/fastprint.keystore
+android/captures/
+android/.idea/
+android/app/release/
