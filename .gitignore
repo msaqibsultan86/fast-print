@@ -12,3 +12,4 @@ android/fastprint.keystore
 android/captures/
 android/.idea/
 android/app/release/
+client_secret*.json
