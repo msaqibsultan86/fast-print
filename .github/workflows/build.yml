@@ -40,10 +40,12 @@ jobs:
       - name: Errors
         if: failure()
         run: |
+          grep -E "^e: |^FAILURE|^Caused by|What went wrong" build.log | head -40 | while IFS= read -r l; do
+            echo "::error::${l}"
+          done
           {
             echo '```'
-            grep -E "^(e:|FAILURE|Caused by|> Task .* FAILED|\* What went wrong)" build.log | head -80 || true
-            tail -n 120 build.log
+            tail -n 150 build.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
