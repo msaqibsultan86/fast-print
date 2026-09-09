@@ -44,14 +44,18 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-}
+    kotlinOptions {
+        jvmTarget = '17'
+    }
 
-applicationVariants.all { variant ->
-    variant.outputs.all { output ->
-        def suffix = variant.buildType.name == 'release' ? '' : '-' + variant.buildType.name
-        outputFileName = "FastPrint-${variant.versionName}${suffix}.apk"
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def suffix = variant.buildType.name == 'release' ? '' : '-' + variant.buildType.name
+            outputFileName = "FastPrint-${variant.versionName}${suffix}.apk"
+        }
     }
 }
+
 
 repositories {
     flatDir{

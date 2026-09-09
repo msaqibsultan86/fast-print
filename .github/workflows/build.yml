@@ -40,7 +40,7 @@ jobs:
       - name: Errors
         if: failure()
         run: |
-          grep -E "^e: |^FAILURE|^Caused by|What went wrong" build.log | head -40 | while IFS= read -r l; do
+          grep -E -A4 "^e: |^FAILURE|^Caused by|What went wrong|error:" build.log | head -60 | while IFS= read -r l; do
             echo "::error::${l}"
           done
           {
